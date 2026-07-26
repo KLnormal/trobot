@@ -10,11 +10,27 @@
 #define WS2812_HIGH 168
 #define WS2812_LOW  84
 
-static uint16_t buf[24+48];
+enum {
+    WS2812_DATA_WORDS = 24,
+    WS2812_RESET_WORDS = 48,
+    WS2812_DMA_WORDS = WS2812_DATA_WORDS + WS2812_RESET_WORDS,
+    DCACHE_LINE_WORDS = 32 / sizeof(uint16_t),
+    WS2812_BUFFER_WORDS =
+        (WS2812_DMA_WORDS + DCACHE_LINE_WORDS - 1) / DCACHE_LINE_WORDS * DCACHE_LINE_WORDS,
+};
+
+__ALIGNED(32) static uint16_t buf[WS2812_BUFFER_WORDS];
+
+static void clean_dma_buffer() {
+    SCB_CleanDCache_by_Addr((uint32_t *) buf, (int32_t) sizeof(buf));
+}
 
 bsp_status_t bsp_led_init() {
-    for (uint8_t i = 0; i < 24+48; i++) buf[i] = 0;
-    return bsp_status_from_hal(HAL_TIMEx_PWMN_Start_DMA(&htim8, TIM_CHANNEL_1, (uint32_t *) buf, 24+48));
+    for (uint8_t i = 0; i < WS2812_BUFFER_WORDS; i++) buf[i] = 0;
+    clean_dma_buffer();
+    return bsp_status_from_hal(HAL_TIMEx_PWMN_Start_DMA(
+        &htim8, TIM_CHANNEL_1, (uint32_t *) buf, WS2812_DMA_WORDS
+    ));
 }
 
 void bsp_led_set(uint8_t r, uint8_t g, uint8_t b) {
@@ -23,6 +39,7 @@ void bsp_led_set(uint8_t r, uint8_t g, uint8_t b) {
         buf[15 - i] = ((r >> i) & 1) ? WS2812_HIGH : WS2812_LOW;
         buf[23 - i] = ((b >> i) & 1) ? WS2812_HIGH : WS2812_LOW;
     }
+    clean_dma_buffer();
 }
 
 void bsp_led_set_hsv(float h, float s, float v) {
