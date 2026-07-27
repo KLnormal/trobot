@@ -8,6 +8,7 @@
 
 #define BSP_CAN_DEVICE_COUNT 3
 #define BSP_CAN_FILTER_LIMIT_STD 24
+#define BSP_CAN_FILTER_LIMIT_EXT 8
 #define BSP_CAN_BUFFER_SIZE 64
 
 typedef enum {
@@ -37,6 +38,20 @@ bsp_status_t bsp_can_init(bsp_can_e device);
 bsp_status_t bsp_can_set_callback(bsp_can_e device, uint32_t id, bsp_can_callback_t func);
 
 /**
+ * 注册扩展帧接收回调
+ * @param device can 外设枚举类
+ * @param id 要匹配的 29 位 can id
+ * @param mask can id 匹配掩码，匹配条件为 (received_id & mask) == (id & mask)
+ * @param func 回调函数
+ */
+bsp_status_t bsp_can_set_ext_callback(
+    bsp_can_e device,
+    uint32_t id,
+    uint32_t mask,
+    bsp_can_callback_t func
+);
+
+/**
  * 发送 can 包
  * @param device can 外设枚举类
  * @param id 要发送的 can id (0 <= id <= 0x7ff)
@@ -44,6 +59,15 @@ bsp_status_t bsp_can_set_callback(bsp_can_e device, uint32_t id, bsp_can_callbac
  * @param len 要发送的数据长度，若 > 8 则使用 canfd 发送
  */
 bsp_status_t bsp_can_send(bsp_can_e device, uint32_t id, const uint8_t *data, uint8_t len);
+
+/**
+ * 发送扩展帧 can 包
+ * @param device can 外设枚举类
+ * @param id 要发送的 29 位 can id
+ * @param data 要发送的数据指针，必须保证在发送完成前有效
+ * @param len 要发送的数据长度，若 > 8 则使用 canfd 发送
+ */
+bsp_status_t bsp_can_send_ext(bsp_can_e device, uint32_t id, const uint8_t *data, uint8_t len);
 
 typedef struct {
     uint32_t tx_error_count;
